@@ -17,3 +17,6 @@ testing/
 # Playwright MCP session artifacts
 .playwright-mcp/
 /fk-*
+
+# personal career/story material — never publish this
+references/story-bank.md
