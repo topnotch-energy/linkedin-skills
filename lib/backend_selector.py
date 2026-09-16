@@ -200,7 +200,16 @@ def publish(
         # Local import so manual-tier users never need `requests` installed.
         from .publora_client import PubloraClient
 
-        client = PubloraClient()
+        # create-post is not idempotent, and the write-method retry decorator
+        # retries on client-side timeout. When posting with media, Publora
+        # fetches the URL and re-uploads it server-side before responding,
+        # which can exceed the 30s default; a timeout there does not mean the
+        # request failed, so a retry creates a second live post. A longer
+        # timeout here makes that retry-on-timeout path far less likely to
+        # fire for the case it's wrong for. (linkedin-skills, 2026-09-16: an
+        # image post landed 3x on a real account this way.)
+        needs_media_time = kind == "post" and bool(kwargs.get("media_urls"))
+        client = PubloraClient(timeout=90.0 if needs_media_time else 30.0)
         platform_id = kwargs.get("platform_id") or os.getenv("LINKEDIN_PLATFORM_ID")
         if not platform_id:
             # Derivable from the key, so do not make the user fetch it by hand.
